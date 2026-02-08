@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Mahakal AI | Fixed</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'], mono: ['"JetBrains Mono"', 'monospace'] },
+                    colors: { bg: '#000000', surface: '#121212', border: '#222222', primary: '#f97316' },
+                    animation: { 'fade-in': 'fadeIn 0.2s ease-out', 'slide-up': 'slideUp 0.3s ease-out' },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        slideUp: { '0%': { transform: 'translateY(10px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* FIX 1: Use dvh (Dynamic Viewport Height) to fix mobile bar cutting off input */
+        body { background-color: #000000; color: #e4e4e7; height: 100dvh; display: flex; overflow: hidden; }
+        
+        /* Safe Area for iPhone/Android Gesture bars */
+        .input-area-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        #sidebar { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        .prose pre { background: #1a1a1a !important; border: 1px solid #333; border-radius: 0.5rem; margin: 0.5rem 0; overflow-x: auto; }
+        .prose code { color: #e4e4e7; font-family: 'JetBrains Mono', monospace; font-size: 0.85em; }
+        .prose p { margin-bottom: 0.75rem; line-height: 1.6; }
+        .prose ul { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 0.5rem; }
+        .prose strong { color: #fff; font-weight: 600; }
+    </style>
+</head>
+<body class="text-sm antialiased bg-bg text-gray-200">
+
+    <div id="mobile-overlay" onclick="App.toggleSidebar()" class="fixed inset-0 bg-black/80 z-40 hidden lg:hidden backdrop-blur-sm transition-opacity"></div>
+
+    <aside id="sidebar" class="w-72 bg-surface border-r border-border flex flex-col fixed inset-y-0 left-0 z-50 transform -translate-x-full lg:translate-x-0 lg:static shrink-0 shadow-2xl transition-transform duration-300">
+        <div class="h-14 flex items-center justify-between px-4 border-b border-border">
+            <div class="flex items-center gap-2 font-bold text-white text-lg"><i class="fa-solid fa-fire text-primary"></i> Mahakal</div>
+            <button onclick="App.toggleSidebar()" class="lg:hidden text-gray-400 p-2"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="p-3">
+            <button onclick="Chat.newChat()" class="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-white transition">
+                <div class="w-6 h-6 rounded bg-primary/20 text-primary flex items-center justify-center"><i class="fa-solid fa-plus text-xs"></i></div>
+                <span class="font-medium">New Chat</span>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-2 space-y-1" id="history-list"></div>
+
+        <div class="p-3 border-t border-border mt-auto input-area-safe">
+            <button onclick="Settings.open()" class="flex items-center gap-3 w-full p-2 hover:bg-white/5 rounded-lg text-left transition">
+                <div class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center border border-white/10"><i class="fa-solid fa-user text-xs"></i></div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-medium text-white truncate">Settings</div>
+                    <div class="text-xs text-gray-500">API Keys</div>
+                </div>
+                <i class="fa-solid fa-gear text-gray-500"></i>
+            </button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-bg h-full relative">
+        
+        <header class="h-14 border-b border-border flex items-center justify-between px-4 bg-bg/90 backdrop-blur sticky top-0 z-30 shrink-0">
+            <div class="flex items-center gap-3">
+                <button onclick="App.toggleSidebar()" class="text-gray-400 hover:text-white lg:hidden"><i class="fa-solid fa-bars text-lg"></i></button>
+                <div class="relative group">
+                    <button class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border text-xs text-gray-300 hover:text-white transition">
+                        <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                        <span id="header-model" class="font-mono max-w-[150px] truncate">Select Model</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] opacity-50"></i>
+                    </button>
+                    <div class="absolute top-full left-0 mt-2 w-64 bg-surface border border-border rounded-xl shadow-xl hidden group-hover:block z-50 p-1">
+                        <div id="quick-model-list" class="max-h-60 overflow-y-auto"></div>
+                        <div class="border-t border-white/5 mt-1 pt-1">
+                            <button onclick="Settings.open()" class="w-full text-left px-2 py-2 text-xs text-primary hover:bg-white/5 rounded font-bold">+ Add Model</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="Chat.clearCurrent()" class="text-gray-400 hover:text-red-500 transition p-2"><i class="fa-regular fa-trash-can"></i></button>
+        </header>
+
+        <div id="chat-container" class="flex-1 overflow-y-auto p-4 scroll-smooth">
+            <div id="welcome-screen" class="h-full flex flex-col items-center justify-center text-center p-8 animate-fade-in">
+                <div class="w-16 h-16 bg-surface rounded-2xl flex items-center justify-center mb-6 border border-border shadow-[0_0_30px_rgba(249,115,22,0.15)]">
+                    <i class="fa-solid fa-bolt text-3xl text-primary"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-white mb-2">Mahakal AI</h1>
+                <p class="text-gray-500 max-w-sm mb-6">Fast, private, and powerful.</p>
+                <button onclick="Settings.open()" class="px-6 py-2.5 bg-white text-black rounded-lg font-bold text-sm hover:bg-gray-200 transition">Connect API Key</button>
+            </div>
+            <div id="messages-list" class="max-w-3xl mx-auto space-y-6 hidden pb-4"></div>
+        </div>
+
+        <div class="shrink-0 border-t border-border bg-black z-30 input-area-safe">
+            <div class="p-3 max-w-3xl mx-auto">
+                <div id="file-preview" class="hidden mb-2 p-2 bg-surface rounded-lg border border-border flex items-center gap-3 animate-slide-up">
+                    <img id="preview-img" class="w-10 h-10 rounded object-cover bg-black">
+                    <div class="text-xs">
+                        <div class="font-bold text-white">Image Attached</div>
+                        <div class="text-gray-500">Ready to send</div>
+                    </div>
+                    <button onclick="Chat.clearFile()" class="ml-auto text-gray-400 hover:text-white p-2"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                
+                <div class="relative flex items-end gap-2 bg-surface border border-border rounded-xl p-2 focus-within:border-primary/50 transition shadow-lg">
+                    <button onclick="document.getElementById('file-upload').click()" class="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition shrink-0">
+                        <i class="fa-solid fa-paperclip"></i>
+                    </button>
+                    <input type="file" id="file-upload" class="hidden" accept="image/*" onchange="Chat.handleFile(this)">
+                    
+                    <textarea id="user-input" rows="1" class="flex-1 bg-transparent text-white py-2.5 px-2 focus:outline-none resize-none max-h-32 text-sm leading-relaxed placeholder-gray-500" placeholder="Type a message..."></textarea>
+                    
+                    <button onclick="Chat.send()" id="send-btn" class="w-10 h-10 flex items-center justify-center bg-white text-black rounded-lg hover:bg-gray-200 transition shrink-0 font-bold">
+                        <i class="fa-solid fa-arrow-up"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="settings-view" class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-surface w-full max-w-md rounded-2xl border border-border shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="p-4 border-b border-border flex justify-between items-center bg-black/20">
+                <h3 class="font-bold text-white">API Configuration</h3>
+                <button onclick="Settings.close()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-5 overflow-y-auto flex-1">
+                <div class="bg-black/50 border border-border rounded-xl p-4 mb-6">
+                    <div class="text-xs font-bold text-primary uppercase mb-3">Add New Key</div>
+                    <div class="space-y-3">
+                        <input type="text" id="new-model" placeholder="Model ID (e.g. deepseek/deepseek-r1)" class="w-full bg-surface border border-border rounded-lg p-3 text-sm text-white focus:border-primary outline-none">
+                        <input type="password" id="new-key" placeholder="API Key (sk-...)" class="w-full bg-surface border border-border rounded-lg p-3 text-sm text-white focus:border-primary outline-none">
+                        <button onclick="Settings.saveNewModel()" class="w-full py-2.5 bg-white text-black rounded-lg font-bold text-sm hover:bg-gray-200">Save Model</button>
+                    </div>
+                </div>
+                <div class="text-xs font-bold text-gray-500 uppercase mb-2">Saved Models</div>
+                <div id="registry-list" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const App = {
+            data: { registry: [], activeModelId: null, chats: [], systemPrompt: "You are a helpful assistant." },
+            currentChatId: null, tempImage: null,
+
+            init: () => {
+                const s = localStorage.getItem('mk_v4_fixed');
+                if(s) App.data = JSON.parse(s);
+                marked.setOptions({ highlight: (code, lang) => highlight.highlight(code, {language: highlight.getLanguage(lang)?lang:'plaintext'}).value });
+                App.applyUI();
+                
+                // Auto-resize textarea
+                const tx = document.getElementById('user-input');
+                tx.addEventListener('input', function() { this.style.height='auto'; this.style.height=(this.scrollHeight)+'px'; });
+                tx.addEventListener('keydown', (e) => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); Chat.send(); }});
+            },
+
+            saveData: () => localStorage.setItem('mk_v4_fixed', JSON.stringify(App.data)),
+            
+            applyUI: () => {
+                Settings.renderRegistry();
+                Chat.renderHistory();
+            },
+
+            toggleSidebar: () => {
+                const sb = document.getElementById('sidebar');
+                const ov = document.getElementById('mobile-overlay');
+                if(sb.classList.contains('-translate-x-full')) {
+                    sb.classList.remove('-translate-x-full'); ov.classList.remove('hidden');
+                } else {
+                    sb.classList.add('-translate-x-full'); ov.classList.add('hidden');
+                }
+            }
+        };
+
+        const Chat = {
+            newChat: () => {
+                App.currentChatId = null;
+                document.getElementById('welcome-screen').classList.remove('hidden');
+                document.getElementById('messages-list').classList.add('hidden');
+                document.getElementById('messages-list').innerHTML = '';
+                if(window.innerWidth < 1024) App.toggleSidebar();
+                Chat.renderHistory();
+            },
+
+            loadChat: (id) => {
+                App.currentChatId = id;
+                // FIX 2: Ensure welcome screen hides immediately on load
+                document.getElementById('welcome-screen').classList.add('hidden');
+                document.getElementById('messages-list').classList.remove('hidden');
+                document.getElementById('messages-list').innerHTML = '';
+                
+                const c = App.data.chats.find(x => x.id === id);
+                if(c) c.messages.forEach(m => Chat.appendUI(m, false));
+                
+                if(window.innerWidth < 1024) App.toggleSidebar();
+                Chat.renderHistory();
+                setTimeout(() => Chat.scrollToBottom(), 50);
+            },
+
+            send: async () => {
+                const input = document.getElementById('user-input');
+                const text = input.value.trim();
+                
+                if(!text && !App.tempImage) return;
+
+                const activeConf = App.data.registry.find(m => m.id === App.data.activeModelId);
+                if(!activeConf) return Settings.open();
+
+                // FIX 2: Hide welcome screen immediately when sending
+                document.getElementById('welcome-screen').classList.add('hidden');
+                document.getElementById('messages-list').classList.remove('hidden');
+
+                input.value = ''; input.style.height = 'auto';
+
+                if(!App.currentChatId) {
+                    const nid = Date.now().toString();
+                    App.data.chats.unshift({ id: nid, title: text.slice(0,30) || "New Chat", messages: [] });
+                    App.currentChatId = nid;
+                    Chat.renderHistory();
+                }
+
+                const chat = App.data.chats.find(c => c.id === App.currentChatId);
+                const userMsg = { role: 'user', content: text, image: App.tempImage };
+                
+                chat.messages.push(userMsg);
+                Chat.appendUI(userMsg);
+                Chat.clearFile();
+                Chat.scrollToBottom();
+
+                const loaderId = 'loader-'+Date.now();
+                document.getElementById('messages-list').insertAdjacentHTML('beforeend', `<div id="${loaderId}" class="flex gap-4"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black shrink-0"><i class="fa-solid fa-bolt text-xs"></i></div><div class="py-2 text-gray-500 text-sm italic">Thinking...</div></div>`);
+                Chat.scrollToBottom();
+
+                try {
+                    // FIX 3: DEEPSEEK & RECURSION SANITIZER
+                    // If the model is strictly text (DeepSeek), we MUST NOT send image URLs in history, or it throws 400.
+                    const isDeepSeek = activeConf.model.toLowerCase().includes('deepseek');
+                    
+                    const apiMsgs = [{role:"system", content:App.data.systemPrompt}, ...chat.messages.map(m => {
+                        // If it's DeepSeek, STRIP images completely, only send text
+                        if(isDeepSeek) {
+                            return { role: m.role, content: m.content || "Image (Ignored)" };
+                        }
+                        // For others, send standard vision format
+                        if(m.image) {
+                            return { role: m.role, content: [{type:"text", text:m.content||"Analyze"}, {type:"image_url", image_url:{url:m.image}}] };
+                        }
+                        return { role: m.role, content: m.content };
+                    })];
+
+                    const res = await fetch(activeConf.url, {
+                        method: "POST",
+                        headers: { 
+                            "Authorization": `Bearer ${activeConf.key}`, 
+                            "Content-Type": "application/json", 
+                            "HTTP-Referer": window.location.href, 
+                            "X-Title": "Mahakal AI" 
+                        },
+                        body: JSON.stringify({ model: activeConf.model, messages: apiMsgs })
+                    });
+
+                    if(!res.ok) {
+                        const err = await res.json().catch(()=>({}));
+                        throw new Error(err.error?.message || `API Error: ${res.status}`);
+                    }
+                    
+                    const d = await res.json();
+                    const reply = d.choices[0].message.content;
+                    document.getElementById(loaderId).remove();
+                    
+                    const aiMsg = { role: 'assistant', content: reply };
+                    chat.messages.push(aiMsg);
+                    Chat.appendUI(aiMsg);
+                    App.saveData();
+                    Chat.scrollToBottom();
+                } catch(e) {
+                    document.getElementById(loaderId).innerHTML = `<div class="text-red-500 text-xs bg-red-900/20 p-3 rounded border border-red-900/50"><strong>Error:</strong> ${e.message}</div>`;
+                }
+            },
+
+            appendUI: (msg, animate=true) => {
+                const div = document.createElement('div');
+                div.className = `flex gap-4 ${msg.role==='user'?'flex-row-reverse':''} ${animate?'animate-slide-up':''}`;
+                
+                const avatar = msg.role==='user' 
+                    ? '<div class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-white shrink-0"><i class="fa-solid fa-user text-xs"></i></div>' 
+                    : '<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black shrink-0"><i class="fa-solid fa-bolt text-xs"></i></div>';
+                
+                let content = msg.image ? `<img src="${msg.image}" class="max-w-[200px] rounded-lg mb-2 border border-border">` : '';
+                content += msg.role==='user' 
+                    ? `<div class="bg-surface px-4 py-2 rounded-2xl rounded-tr-sm border border-border text-gray-200 text-sm whitespace-pre-wrap">${msg.content}</div>` 
+                    : `<div class="prose prose-invert max-w-none text-sm">${marked.parse(msg.content)}</div>`;
+                
+                div.innerHTML = `${avatar}<div class="min-w-0 max-w-[85%]">${content}</div>`;
+                document.getElementById('messages-list').appendChild(div);
+                
+                if(msg.role==='assistant') div.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+            },
+
+            handleFile: (i) => {
+                const r = new FileReader();
+                r.onload = e => { App.tempImage = e.target.result; document.getElementById('file-preview').classList.remove('hidden'); document.getElementById('preview-img').src=e.target.result; };
+                if(i.files[0]) r.readAsDataURL(i.files[0]);
+            },
+            clearFile: () => { App.tempImage = null; document.getElementById('file-preview').classList.add('hidden'); document.getElementById('file-upload').value=''; },
+            scrollToBottom: () => { const c=document.getElementById('chat-container'); c.scrollTo({top:c.scrollHeight, behavior:'smooth'}); },
+            clearCurrent: () => { if(confirm("Clear chat?")) { App.data.chats=App.data.chats.filter(c=>c.id!==App.currentChatId); App.saveData(); Chat.newChat(); }},
+            renderHistory: () => {
+                const list = document.getElementById('history-list'); list.innerHTML = '';
+                App.data.chats.forEach(c => {
+                    const btn = document.createElement('button');
+                    btn.className = `w-full text-left px-3 py-2 rounded-lg text-xs truncate transition mb-0.5 ${c.id===App.currentChatId?'bg-white/10 text-white':'text-gray-400 hover:text-white hover:bg-white/5'}`;
+                    btn.innerText = c.title; btn.onclick = () => Chat.loadChat(c.id); list.appendChild(btn);
+                });
+            }
+        };
+
+        const Settings = {
+            open: () => { document.getElementById('settings-view').classList.remove('hidden'); Settings.renderRegistry(); },
+            close: () => document.getElementById('settings-view').classList.add('hidden'),
+            renderRegistry: () => {
+                const list = document.getElementById('registry-list');
+                const quick = document.getElementById('quick-model-list');
+                list.innerHTML = ''; quick.innerHTML = '';
+                
+                const active = App.data.registry.find(m => m.id === App.data.activeModelId);
+                document.getElementById('header-model').innerText = active ? active.model : "Select Model";
+
+                if(App.data.registry.length === 0) list.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">No keys saved.</div>';
+
+                App.data.registry.forEach(m => {
+                    const div = document.createElement('div');
+                    div.className = "flex justify-between items-center bg-black/50 border border-border p-3 rounded-lg mb-2";
+                    div.innerHTML = `<div class="overflow-hidden mr-2"><div class="text-white text-xs font-bold truncate">${m.model}</div><div class="text-[10px] text-gray-500 font-mono truncate">Key: •••${m.key.slice(-4)}</div></div><button onclick="Settings.deleteModel('${m.id}')" class="text-red-500 hover:text-red-400"><i class="fa-solid fa-trash text-sm"></i></button>`;
+                    list.appendChild(div);
+
+                    const btn = document.createElement('button');
+                    btn.className = `w-full text-left px-2 py-1.5 rounded text-xs truncate ${m.id===App.data.activeModelId?'text-primary font-bold bg-white/5':'text-gray-300 hover:bg-white/5'}`;
+                    btn.innerText = m.model;
+                    btn.onclick = () => { App.data.activeModelId = m.id; App.saveData(); App.applyUI(); };
+                    quick.appendChild(btn);
+                });
+            },
+            saveNewModel: () => {
+                const model = document.getElementById('new-model').value.trim();
+                const key = document.getElementById('new-key').value.trim();
+                if(!model || !key) return alert("All fields required");
+
+                let url = "https://openrouter.ai/api/v1/chat/completions";
+                if(key.startsWith('sk-proj')) url = "https://api.openai.com/v1/chat/completions";
+                if(key.startsWith('AIza')) url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+
+                const newMod = { id: Date.now().toString(), model, key, url };
+                App.data.registry.push(newMod);
+                if(App.data.registry.length === 1) App.data.activeModelId = newMod.id;
+                
+                App.saveData(); Settings.renderRegistry();
+                document.getElementById('new-model').value = ''; document.getElementById('new-key').value = '';
+            },
+            deleteModel: (id) => {
+                if(confirm("Delete key?")) {
+                    App.data.registry = App.data.registry.filter(m => m.id !== id);
+                    if(App.data.activeModelId === id) App.data.activeModelId = App.data.registry[0]?.id || null;
+                    App.saveData(); Settings.renderRegistry();
+                }
+            }
+        };
+
+        window.onload = App.init;
+    </script>
+</body>
+</html>
