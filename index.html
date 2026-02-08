@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mahakal AI | Stable</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: { 
+                        bg: '#09090b', 
+                        surface: '#18181b', 
+                        border: '#27272a',
+                        primary: '#f97316'
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.2s ease-out',
+                        'slide-up': 'slideUp 0.3s ease-out'
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        slideUp: { '0%': { transform: 'translateY(10px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #09090b; color: #e4e4e7; height: 100vh; display: flex; overflow: hidden; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        /* Sidebar Transition */
+        #sidebar { transition: margin-left 0.3s ease, transform 0.3s ease; }
+        
+        /* Markdown Styles */
+        .prose pre { background: #18181b !important; border: 1px solid #27272a; border-radius: 0.5rem; margin: 0.5rem 0; }
+        .prose code { color: #e4e4e7; font-family: 'JetBrains Mono', monospace; font-size: 0.85em; }
+        .prose p { margin-bottom: 0.75rem; line-height: 1.6; }
+        .prose ul, .prose ol { margin-bottom: 0.75rem; padding-left: 1.25rem; }
+        .prose li { margin-bottom: 0.25rem; }
+        .prose strong { color: #fff; font-weight: 600; }
+    </style>
+</head>
+<body class="text-sm antialiased">
+
+    <div id="mobile-overlay" onclick="App.toggleSidebar()" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden backdrop-blur-sm transition-opacity"></div>
+
+    <aside id="sidebar" class="w-72 bg-surface border-r border-border flex flex-col fixed inset-y-0 left-0 z-50 transform -translate-x-full lg:translate-x-0 lg:static shrink-0 shadow-2xl lg:shadow-none">
+        <div class="h-14 flex items-center justify-between px-4 border-b border-border">
+            <div class="flex items-center gap-2 font-bold text-white text-lg">
+                <i class="fa-solid fa-fire text-primary"></i> Mahakal
+            </div>
+            <button onclick="App.toggleSidebar()" class="lg:hidden text-gray-400 p-2"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="p-3">
+            <button onclick="Chat.newChat()" class="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-white transition group">
+                <div class="w-6 h-6 rounded-md bg-primary/20 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-black transition-colors"><i class="fa-solid fa-plus text-xs"></i></div>
+                <span class="font-medium">New Chat</span>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-2 space-y-1" id="history-list"></div>
+
+        <div class="p-3 border-t border-border mt-auto">
+            <button onclick="Settings.open('profile')" class="flex items-center gap-3 w-full p-2 hover:bg-white/5 rounded-lg text-left transition">
+                <img id="sidebar-avatar" src="" class="w-8 h-8 rounded-full bg-gray-700 object-cover">
+                <div class="flex-1 min-w-0">
+                    <div id="sidebar-name" class="font-medium text-white truncate">User</div>
+                    <div class="text-xs text-gray-500">Settings</div>
+                </div>
+                <i class="fa-solid fa-gear text-gray-500"></i>
+            </button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-bg relative h-full">
+        
+        <header class="h-14 border-b border-border flex items-center justify-between px-4 bg-bg/80 backdrop-blur sticky top-0 z-30 shrink-0">
+            <div class="flex items-center gap-3">
+                <button onclick="App.toggleSidebar()" class="text-gray-400 hover:text-white lg:hidden"><i class="fa-solid fa-bars text-lg"></i></button>
+                <div class="relative group">
+                    <button class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border text-xs text-gray-300 hover:text-white hover:border-gray-500 transition">
+                        <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                        <span id="header-model" class="font-mono max-w-[120px] truncate">Select Model</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] opacity-50"></i>
+                    </button>
+                    <div class="absolute top-full left-0 mt-2 w-64 bg-surface border border-border rounded-xl shadow-xl hidden group-hover:block z-50 p-1">
+                        <div class="px-2 py-1.5 text-[10px] font-bold text-gray-500 uppercase">Your Models</div>
+                        <div id="quick-model-list" class="max-h-60 overflow-y-auto"></div>
+                        <div class="border-t border-white/5 mt-1 pt-1">
+                            <button onclick="Settings.open('api')" class="w-full text-left px-2 py-2 text-xs text-primary hover:bg-white/5 rounded">+ Manage Models</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="Chat.clearCurrent()" class="text-gray-400 hover:text-red-500 transition p-2" title="Clear Chat"><i class="fa-regular fa-trash-can"></i></button>
+        </header>
+
+        <div id="chat-container" class="flex-1 overflow-y-auto p-4 scroll-smooth">
+            
+            <div id="welcome-screen" class="h-full flex flex-col items-center justify-center text-center p-8 animate-fade-in">
+                <div class="w-16 h-16 bg-surface rounded-2xl flex items-center justify-center mb-6 border border-border shadow-lg shadow-orange-500/10">
+                    <i class="fa-solid fa-bolt text-3xl text-primary"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-white mb-2">Mahakal AI</h1>
+                <p class="text-gray-500 max-w-sm mb-8">Connect your API keys to start chatting with advanced reasoning models.</p>
+                <div class="flex gap-2">
+                    <button onclick="Settings.open('api')" class="px-4 py-2 bg-white text-black rounded-lg font-bold text-sm hover:bg-gray-200 transition">Configure API</button>
+                </div>
+            </div>
+
+            <div id="messages-list" class="max-w-3xl mx-auto space-y-6 hidden pb-4"></div>
+        </div>
+
+        <div class="shrink-0 p-4 border-t border-border bg-bg z-30">
+            <div class="max-w-3xl mx-auto">
+                <div id="file-preview" class="hidden mb-2 p-2 bg-surface rounded-lg border border-border flex items-center gap-3 animate-slide-up">
+                    <img id="preview-img" class="w-10 h-10 rounded object-cover bg-black">
+                    <div class="text-xs">
+                        <div class="font-bold text-white">Image Attached</div>
+                        <div class="text-gray-500">Ready to analyze</div>
+                    </div>
+                    <button onclick="Chat.clearFile()" class="ml-auto text-gray-400 hover:text-white p-2"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="relative flex items-end gap-2 bg-surface border border-border rounded-xl p-2 focus-within:border-primary/50 transition shadow-sm">
+                    <button onclick="document.getElementById('file-upload').click()" class="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition shrink-0">
+                        <i class="fa-solid fa-paperclip"></i>
+                    </button>
+                    <input type="file" id="file-upload" class="hidden" accept="image/*" onchange="Chat.handleFile(this)">
+                    
+                    <textarea id="user-input" rows="1" class="flex-1 bg-transparent text-white py-2 px-1 focus:outline-none resize-none max-h-32 text-sm leading-relaxed" placeholder="Type a message..."></textarea>
+                    
+                    <button onclick="Chat.send()" id="send-btn" class="w-9 h-9 flex items-center justify-center bg-white text-black rounded-lg hover:bg-gray-200 transition shrink-0 font-bold shadow-lg shadow-white/10">
+                        <i class="fa-solid fa-arrow-up"></i>
+                    </button>
+                </div>
+                <div class="text-center mt-2 text-[10px] text-gray-600">AI can make mistakes. Verify important info.</div>
+            </div>
+        </div>
+    </main>
+
+    <div id="settings-view" class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-bg w-full max-w-4xl h-[80vh] rounded-2xl border border-border flex overflow-hidden shadow-2xl">
+            <div class="w-64 bg-surface border-r border-border p-4 flex flex-col gap-1 hidden md:flex">
+                <div class="font-bold text-white px-3 mb-4 text-lg">Settings</div>
+                <button onclick="Settings.nav('profile')" class="set-btn active text-left px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-white/5 hover:text-white transition"><i class="fa-solid fa-user w-6"></i> Profile</button>
+                <button onclick="Settings.nav('api')" class="set-btn text-left px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-white/5 hover:text-white transition"><i class="fa-solid fa-key w-6"></i> Models</button>
+                <button onclick="Settings.nav('system')" class="set-btn text-left px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-white/5 hover:text-white transition"><i class="fa-solid fa-robot w-6"></i> System Prompt</button>
+                <div class="mt-auto pt-4 border-t border-white/5">
+                    <button onclick="Settings.close()" class="w-full py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium">Done</button>
+                </div>
+            </div>
+
+            <div class="flex-1 flex flex-col h-full bg-bg">
+                <div class="md:hidden flex items-center justify-between p-4 border-b border-border bg-surface">
+                    <span class="font-bold text-white">Settings</span>
+                    <button onclick="Settings.close()" class="text-gray-400"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                
+                <div class="md:hidden flex border-b border-border overflow-x-auto">
+                    <button onclick="Settings.nav('profile')" class="flex-1 py-3 text-xs text-center text-gray-400 hover:text-white set-btn">Profile</button>
+                    <button onclick="Settings.nav('api')" class="flex-1 py-3 text-xs text-center text-gray-400 hover:text-white set-btn">Models</button>
+                    <button onclick="Settings.nav('system')" class="flex-1 py-3 text-xs text-center text-gray-400 hover:text-white set-btn">System</button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-6 md:p-8">
+                    
+                    <div id="sec-profile" class="settings-sec space-y-6">
+                        <h3 class="text-xl font-bold text-white border-b border-border pb-2">Profile</h3>
+                        <div class="flex items-center gap-6">
+                            <div class="relative group cursor-pointer w-20 h-20" onclick="document.getElementById('avatar-upload').click()">
+                                <img id="set-avatar" src="" class="w-full h-full rounded-full border border-border object-cover">
+                                <div class="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><i class="fa-solid fa-camera text-white"></i></div>
+                            </div>
+                            <input type="file" id="avatar-upload" class="hidden" onchange="Settings.uploadAvatar(this)">
+                            <div class="flex-1 space-y-3">
+                                <input type="text" id="inp-name" class="w-full bg-surface border border-border rounded-lg p-3 text-white focus:border-primary outline-none" placeholder="Display Name">
+                                <input type="text" id="inp-role" class="w-full bg-surface border border-border rounded-lg p-3 text-white focus:border-primary outline-none" placeholder="Role (e.g. Developer)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="sec-api" class="settings-sec hidden space-y-6">
+                        <div class="flex justify-between items-center border-b border-border pb-2">
+                            <h3 class="text-xl font-bold text-white">Models</h3>
+                            <button onclick="document.getElementById('add-model-form').classList.remove('hidden')" class="text-xs bg-white text-black px-3 py-1.5 rounded-lg font-bold hover:bg-gray-200">+ Add</button>
+                        </div>
+                        
+                        <div id="add-model-form" class="bg-surface border border-border rounded-xl p-4 hidden space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="text" id="new-name" placeholder="Name (GPT-4)" class="bg-black border border-border rounded-lg p-2 text-sm text-white">
+                                <input type="text" id="new-model" value="google/gemini-2.0-flash-001" placeholder="Model ID" class="bg-black border border-border rounded-lg p-2 text-sm text-white">
+                            </div>
+                            <input type="text" id="new-url" value="https://openrouter.ai/api/v1/chat/completions" placeholder="Base URL" class="w-full bg-black border border-border rounded-lg p-2 text-sm text-white font-mono">
+                            <input type="password" id="new-key" placeholder="sk-..." class="w-full bg-black border border-border rounded-lg p-2 text-sm text-white font-mono">
+                            <div class="flex justify-end gap-2">
+                                <button onclick="document.getElementById('add-model-form').classList.add('hidden')" class="px-3 py-1.5 text-xs text-gray-400">Cancel</button>
+                                <button onclick="Settings.saveNewModel()" class="px-3 py-1.5 text-xs bg-primary text-black rounded font-bold">Save</button>
+                            </div>
+                        </div>
+
+                        <div id="registry-list" class="space-y-2"></div>
+                    </div>
+
+                    <div id="sec-system" class="settings-sec hidden space-y-6">
+                        <h3 class="text-xl font-bold text-white border-b border-border pb-2">System Prompt</h3>
+                        <p class="text-sm text-gray-500">Instructions sent to the AI at the start of every chat.</p>
+                        <textarea id="inp-system" class="w-full h-64 bg-surface border border-border rounded-xl p-4 text-sm text-gray-300 focus:border-primary outline-none font-mono resize-none"></textarea>
+                        <button onclick="Settings.saveSystem()" class="float-right px-4 py-2 bg-white text-black rounded-lg text-sm font-bold hover:bg-gray-200">Save Changes</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const App = {
+            data: {
+                user: { name: 'Guest', role: 'User', avatar: 'https://ui-avatars.com/api/?name=Guest&background=random' },
+                registry: [],
+                activeModelId: null,
+                chats: [],
+                systemPrompt: "You are a helpful assistant."
+            },
+            currentChatId: null,
+            tempImage: null,
+
+            init: () => {
+                const s = localStorage.getItem('mk_stable_data');
+                if(s) App.data = JSON.parse(s);
+                
+                // Highlight config
+                marked.setOptions({
+                    highlight: (code, lang) => {
+                        const language = highlight.getLanguage(lang) ? lang : 'plaintext';
+                        return highlight.highlight(code, { language }).value;
+                    }
+                });
+
+                App.applyUI();
+                
+                // Auto-resize textarea
+                const tx = document.getElementById('user-input');
+                tx.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = (this.scrollHeight) + 'px';
+                });
+                tx.addEventListener('keydown', (e) => {
+                    if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); Chat.send(); }
+                });
+            },
+
+            saveData: () => localStorage.setItem('mk_stable_data', JSON.stringify(App.data)),
+
+            applyUI: () => {
+                document.getElementById('sidebar-name').innerText = App.data.user.name;
+                document.getElementById('inp-name').value = App.data.user.name;
+                document.getElementById('inp-role').value = App.data.user.role;
+                document.getElementById('sidebar-avatar').src = App.data.user.avatar;
+                document.getElementById('set-avatar').src = App.data.user.avatar;
+                document.getElementById('inp-system').value = App.data.systemPrompt;
+                Settings.renderRegistry();
+                Chat.renderHistory();
+            },
+
+            toggleSidebar: () => {
+                const sb = document.getElementById('sidebar');
+                const ov = document.getElementById('mobile-overlay');
+                
+                if(window.innerWidth < 1024) {
+                    // Mobile Toggle
+                    if(sb.classList.contains('-translate-x-full')) {
+                        sb.classList.remove('-translate-x-full');
+                        ov.classList.remove('hidden');
+                    } else {
+                        sb.classList.add('-translate-x-full');
+                        ov.classList.add('hidden');
+                    }
+                } else {
+                    // Desktop Toggle (Push content)
+                    // Currently hardcoded to static on desktop in class list, 
+                    // but logic can be added here if needed.
+                }
+            }
+        };
+
+        const Chat = {
+            newChat: () => {
+                App.currentChatId = null;
+                document.getElementById('welcome-screen').classList.remove('hidden');
+                document.getElementById('messages-list').classList.add('hidden');
+                document.getElementById('messages-list').innerHTML = '';
+                if(window.innerWidth < 1024) App.toggleSidebar();
+                Chat.renderHistory();
+            },
+
+            loadChat: (id) => {
+                App.currentChatId = id;
+                document.getElementById('welcome-screen').classList.add('hidden');
+                document.getElementById('messages-list').classList.remove('hidden');
+                document.getElementById('messages-list').innerHTML = '';
+                
+                const c = App.data.chats.find(x => x.id === id);
+                if(c) c.messages.forEach(m => Chat.appendUI(m, false));
+                
+                if(window.innerWidth < 1024) App.toggleSidebar();
+                Chat.renderHistory();
+                setTimeout(() => Chat.scrollToBottom(), 50);
+            },
+
+            send: async () => {
+                const input = document.getElementById('user-input');
+                const text = input.value.trim();
+                
+                if(!text && !App.tempImage) return;
+
+                const activeConf = App.data.registry.find(m => m.id === App.data.activeModelId);
+                if(!activeConf) {
+                    Settings.open('api');
+                    return alert("Please configure a model in settings.");
+                }
+
+                input.value = '';
+                input.style.height = 'auto';
+
+                document.getElementById('welcome-screen').classList.add('hidden');
+                document.getElementById('messages-list').classList.remove('hidden');
+
+                if(!App.currentChatId) {
+                    const nid = Date.now().toString();
+                    App.data.chats.unshift({ id: nid, title: text.slice(0,40) || "Image Analysis", messages: [] });
+                    App.currentChatId = nid;
+                    Chat.renderHistory();
+                }
+
+                const chat = App.data.chats.find(c => c.id === App.currentChatId);
+                const userMsg = { role: 'user', content: text, image: App.tempImage };
+                
+                chat.messages.push(userMsg);
+                Chat.appendUI(userMsg);
+                Chat.clearFile();
+                Chat.scrollToBottom();
+
+                // Loading State
+                const loaderId = 'loader-' + Date.now();
+                const loaderHtml = `<div id="${loaderId}" class="flex gap-4"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black shrink-0"><i class="fa-solid fa-bolt text-xs"></i></div><div class="py-2 text-gray-500 text-sm">Thinking...</div></div>`;
+                document.getElementById('messages-list').insertAdjacentHTML('beforeend', loaderHtml);
+                Chat.scrollToBottom();
+
+                try {
+                    const sys = { role: "system", content: App.data.systemPrompt };
+                    const apiMsgs = [sys, ...chat.messages.map(m => {
+                        if(m.image) return { role: m.role, content: [{type:"text", text:m.content||"Analyze"}, {type:"image_url", image_url:{url:m.image}}] };
+                        return { role: m.role, content: m.content };
+                    })];
+
+                    const res = await fetch(activeConf.url, {
+                        method: "POST",
+                        headers: { "Authorization": `Bearer ${activeConf.key}`, "Content-Type": "application/json" },
+                        body: JSON.stringify({ model: activeConf.model, messages: apiMsgs })
+                    });
+
+                    if(!res.ok) throw new Error("API Error: " + res.status);
+                    const d = await res.json();
+                    const reply = d.choices?.[0]?.message?.content || "No response.";
+
+                    document.getElementById(loaderId).remove();
+                    const aiMsg = { role: 'assistant', content: reply };
+                    chat.messages.push(aiMsg);
+                    Chat.appendUI(aiMsg);
+                    App.saveData();
+                    Chat.scrollToBottom();
+
+                } catch(e) {
+                    document.getElementById(loaderId).innerHTML = `<div class="text-red-500 text-sm">Error: ${e.message}</div>`;
+                }
+            },
+
+            appendUI: (msg, animate = true) => {
+                const div = document.createElement('div');
+                div.className = `flex gap-4 ${msg.role==='user'?'flex-row-reverse':''} ${animate?'animate-slide-up':''}`;
+                
+                const avatar = msg.role === 'user' 
+                    ? `<img src="${App.data.user.avatar}" class="w-8 h-8 rounded-full border border-border object-cover shrink-0">`
+                    : `<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black font-bold shrink-0"><i class="fa-solid fa-bolt text-xs"></i></div>`;
+
+                let content = msg.image ? `<img src="${msg.image}" class="max-w-[200px] rounded-lg mb-2 border border-border">` : '';
+                
+                if(msg.role === 'user') {
+                    content += `<div class="bg-surface px-4 py-2 rounded-2xl rounded-tr-sm border border-border text-white text-sm whitespace-pre-wrap">${msg.content}</div>`;
+                } else {
+                    content += `<div class="prose prose-invert max-w-none text-sm">${marked.parse(msg.content)}</div>`;
+                }
+
+                div.innerHTML = `${avatar}<div class="min-w-0 max-w-[85%]">${content}</div>`;
+                document.getElementById('messages-list').appendChild(div);
+                
+                // Add Copy Buttons
+                if(msg.role === 'assistant') {
+                    div.querySelectorAll('pre').forEach(pre => {
+                        const btn = document.createElement('button');
+                        btn.className = "absolute top-2 right-2 text-xs text-gray-500 hover:text-white bg-black/50 px-2 py-1 rounded";
+                        btn.innerText = "Copy";
+                        btn.onclick = () => {
+                            navigator.clipboard.writeText(pre.querySelector('code').innerText);
+                            btn.innerText = "Copied!";
+                            setTimeout(()=>btn.innerText="Copy", 2000);
+                        };
+                        pre.style.position = 'relative';
+                        pre.appendChild(btn);
+                    });
+                }
+            },
+
+            handleFile: (input) => {
+                const r = new FileReader();
+                r.onload = (e) => {
+                    App.tempImage = e.target.result;
+                    document.getElementById('file-preview').classList.remove('hidden');
+                    document.getElementById('preview-img').src = e.target.result;
+                };
+                if(input.files[0]) r.readAsDataURL(input.files[0]);
+            },
+            clearFile: () => {
+                App.tempImage = null;
+                document.getElementById('file-preview').classList.add('hidden');
+                document.getElementById('file-upload').value = '';
+            },
+            scrollToBottom: () => {
+                const c = document.getElementById('chat-container');
+                c.scrollTo({ top: c.scrollHeight, behavior: 'smooth' });
+            },
+            clearCurrent: () => {
+                if(App.currentChatId && confirm("Delete chat?")) {
+                    App.data.chats = App.data.chats.filter(c => c.id !== App.currentChatId);
+                    App.saveData();
+                    Chat.newChat();
+                }
+            },
+            renderHistory: () => {
+                const list = document.getElementById('history-list');
+                list.innerHTML = '';
+                if(App.data.chats.length === 0) list.innerHTML = '<div class="text-center text-gray-600 text-xs py-4">No history</div>';
+                App.data.chats.forEach(c => {
+                    const btn = document.createElement('button');
+                    const active = c.id === App.currentChatId ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5';
+                    btn.className = `w-full text-left px-3 py-2 rounded-lg text-xs truncate transition mb-0.5 ${active}`;
+                    btn.innerText = c.title;
+                    btn.onclick = () => Chat.loadChat(c.id);
+                    list.appendChild(btn);
+                });
+            }
+        };
+
+        const Settings = {
+            open: (tab) => {
+                document.getElementById('settings-view').classList.remove('hidden');
+                Settings.nav(tab);
+            },
+            close: () => {
+                document.getElementById('settings-view').classList.add('hidden');
+                App.data.user.name = document.getElementById('inp-name').value;
+                App.data.user.role = document.getElementById('inp-role').value;
+                App.saveData();
+                App.applyUI();
+            },
+            nav: (tab) => {
+                document.querySelectorAll('.settings-sec').forEach(s => s.classList.add('hidden'));
+                document.getElementById(`sec-${tab}`).classList.remove('hidden');
+                document.querySelectorAll('.set-btn').forEach(b => b.classList.remove('active', 'bg-white/10', 'text-white'));
+                if(event) event.currentTarget?.classList.add('active', 'bg-white/10', 'text-white');
+            },
+            renderRegistry: () => {
+                const list = document.getElementById('registry-list');
+                const quick = document.getElementById('quick-model-list');
+                list.innerHTML = ''; quick.innerHTML = '';
+                
+                const active = App.data.registry.find(m => m.id === App.data.activeModelId);
+                document.getElementById('header-model').innerText = active ? active.name : "Select Model";
+
+                if(App.data.registry.length === 0) {
+                    list.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">No models added.</div>';
+                    quick.innerHTML = '<div class="text-center text-gray-500 text-[10px] py-2">No models.</div>';
+                    return;
+                }
+
+                App.data.registry.forEach(m => {
+                    // Settings List
+                    const d = document.createElement('div');
+                    d.className = "flex justify-between items-center bg-black border border-border p-3 rounded-lg";
+                    d.innerHTML = `<div><div class="text-white text-sm font-bold">${m.name}</div><div class="text-[10px] text-gray-500 font-mono">${m.model}</div></div> <button onclick="Settings.delModel('${m.id}')" class="text-gray-500 hover:text-red-500"><i class="fa-solid fa-trash"></i></button>`;
+                    list.appendChild(d);
+
+                    // Dropdown List
+                    const b = document.createElement('button');
+                    b.className = `w-full text-left px-2 py-1.5 rounded text-xs truncate ${m.id===App.data.activeModelId?'text-primary font-bold bg-white/5':'text-gray-300 hover:bg-white/5'}`;
+                    b.innerText = m.name;
+                    b.onclick = () => { App.data.activeModelId = m.id; App.saveData(); App.applyUI(); };
+                    quick.appendChild(b);
+                });
+            },
+            saveNewModel: () => {
+                const name = document.getElementById('new-name').value;
+                const key = document.getElementById('new-key').value;
+                if(!name || !key) return alert("Name and Key required");
+                const m = {
+                    id: Date.now().toString(),
+                    name,
+                    key,
+                    url: document.getElementById('new-url').value,
+                    model: document.getElementById('new-model').value
+                };
+                App.data.registry.push(m);
+                if(App.data.registry.length === 1) App.data.activeModelId = m.id;
+                App.saveData();
+                Settings.renderRegistry();
+                document.getElementById('add-model-form').classList.add('hidden');
+                document.getElementById('new-key').value = '';
+            },
+            delModel: (id) => {
+                if(confirm("Delete?")) {
+                    App.data.registry = App.data.registry.filter(x => x.id !== id);
+                    if(App.data.activeModelId === id) App.data.activeModelId = App.data.registry[0]?.id || null;
+                    App.saveData();
+                    Settings.renderRegistry();
+                }
+            },
+            saveSystem: () => {
+                App.data.systemPrompt = document.getElementById('inp-system').value;
+                App.saveData();
+                alert("Saved");
+            },
+            uploadAvatar: (i) => {
+                const r = new FileReader();
+                r.onload = e => { document.getElementById('set-avatar').src = e.target.result; App.data.user.avatar = e.target.result; };
+                if(i.files[0]) r.readAsDataURL(i.files[0]);
+            }
+        };
+
+        window.onload = App.init;
+    </script>
+</body>
+</html>
